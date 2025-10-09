@@ -213,6 +213,33 @@ class InfiniteZoomArt {
       }
     });
   }
+  updateLayerIndicator() {
+    this.layerIndicator.innerHTML = '';
+    
+    this.layers.forEach((layer, index) => {
+      const opacity = this.getLayerOpacity(index);
+      if (opacity > 0.1) {
+        const layerItem = document.createElement('div');
+        layerItem.className = 'layer-item';
+        
+        const layerName = document.createElement('div');
+        layerName.className = 'layer-name';
+        layerName.textContent = layer.name;
+        
+        const progressContainer = document.createElement('div');
+        progressContainer.className = 'layer-progress';
+        
+        const progressBar = document.createElement('div');
+        progressBar.className = 'layer-progress-bar';
+        progressBar.style.width = `${opacity * 100}%`;
+        
+        progressContainer.appendChild(progressBar);
+        layerItem.appendChild(layerName);
+        layerItem.appendChild(progressContainer);
+        this.layerIndicator.appendChild(layerItem);
+      }
+    });
+  }
 }
 
 // Initialize the application when the DOM is loaded
