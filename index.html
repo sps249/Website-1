@@ -2,12 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Infinite Zoom Art Gallery</title>
+    <link rel="stylesheet" href="styles.css">
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/main.jsx"></script>
+    <div id="app">
+      <div class="zoom-container">
+        <div class="zoom-content" id="zoomContent">
+          <!-- Layers will be dynamically created by JavaScript -->
+        </div>
+      </div>
+
+      <!-- Instructions -->
+      <div class="instructions">
+        <div>3 scales of Incremental Zoning</div>
+        <div class="instructions-sub">
+          Scroll to zoom • Drag to explore
+        </div>
+      </div>
+      
+      <!-- Zoom indicator -->
+      <div class="zoom-indicator" id="zoomIndicator">
+        1.00x
+      </div>
+
+      <!-- Current layer indicator -->
+      <div class="layer-indicator" id="layerIndicator">
+        <!-- Layer indicators will be dynamically created by JavaScript -->
+      </div>
+    </div>
+
+    <script src="script.js"></script>
   </body>
 </html>

@@ -1,0 +1,173 @@
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  background-color: black;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Zoom container styles */
+.zoom-container {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  position: relative;
+}
+
+.zoom-container:active {
+  cursor: grabbing;
+}
+
+.zoom-content {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-origin: center center;
+  transition: transform 0.15s ease-out;
+}
+
+.zoom-content.panning {
+  transition: none;
+}
+
+/* Layer styles */
+.layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.layer img {
+  width: auto;
+  height: auto;
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+  transition: transform 0.2s ease-out;
+  image-rendering: auto;
+  backface-visibility: hidden;
+}
+
+/* Instructions */
+.instructions {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 14px;
+  opacity: 0.75;
+  text-align: center;
+}
+
+.instructions-sub {
+  font-size: 12px;
+  opacity: 0.6;
+  margin-top: 4px;
+}
+
+/* Zoom indicator */
+.zoom-indicator {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  color: white;
+  font-size: 12px;
+  opacity: 0.4;
+  font-family: monospace;
+}
+
+/* Layer indicator */
+.layer-indicator {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  color: white;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.layer-item {
+  margin-bottom: 4px;
+}
+
+.layer-name {
+  font-family: monospace;
+}
+
+.layer-progress {
+  width: 64px;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  margin-top: 4px;
+  position: relative;
+}
+
+.layer-progress-bar {
+  height: 100%;
+  background-color: white;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+/* Debug labels (optional) */
+.debug-label {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .instructions {
+    bottom: 16px;
+    font-size: 12px;
+  }
+  
+  .instructions-sub {
+    font-size: 10px;
+  }
+  
+  .zoom-indicator {
+    top: 16px;
+    right: 16px;
+    font-size: 10px;
+  }
+  
+  .layer-indicator {
+    top: 16px;
+    left: 16px;
+    font-size: 10px;
+  }
+}
