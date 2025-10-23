@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incremental Zoning - Interactive Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            background: #000;
+        }
+
+        /* Custom Cursor */
+        #custom-cursor {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #ABCEAB;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            transition: background-color 0.3s ease;
+        }
+
+        /* Static Top Tabs */
+        #tabs-container {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 40px;
+            z-index: 5000;
+            pointer-events: none;
+        }
+
+        .tab {
+            padding: 12px 30px;
+            font-size: 14px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            border: 2px solid;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+            cursor: none;
+            pointer-events: auto;
+            text-transform: uppercase;
+        }
+
+        .tab.green {
+            color: #ABCEAB;
+            border-color: #ABCEAB;
+            background-color: rgba(171, 206, 171, 0.1);
+        }
+
+        .tab.green:hover {
+            background-color: rgba(171, 206, 171, 0.3);
+        }
+
+        .tab.red {
+            color: #FFABAB;
+            border-color: #FFABAB;
+            background-color: rgba(255, 171, 171, 0.1);
+        }
+
+        .tab.red:hover {
+            background-color: rgba(255, 171, 171, 0.3);
+        }
+
+        .tab.blue {
+            color: #72AFE9;
+            border-color: #72AFE9;
+            background-color: rgba(114, 175, 233, 0.1);
+        }
+
+        .tab.blue:hover {
+            background-color: rgba(114, 175, 233, 0.3);
+        }
+
+        /* Static Bottom Text */
+        #bottom-text {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 14px;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            color: #ABCEAB;
+            z-index: 5000;
+            letter-spacing: 2px;
+        }
+
+        /* Main Container */
+        #main-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Landing Page Image */
+        #landing-image {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            height: 100vh;
+            width: auto;
+            min-width: 100vw;
+            object-fit: cover;
+            object-position: center;
+            transform: translateX(-50%);
+            transition: transform 0.15s ease-out;
+            will-change: transform;
+        }
+
+        /* Overlay Images */
+        .overlay-image {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            height: 100vh;
+            width: auto;
+            min-width: 100vw;
+            object-fit: cover;
+            object-position: center;
+            transform: translateX(-50%);
+            transition: transform 0.15s ease-out;
+            will-change: transform;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Gallery View */
+        #gallery-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            z-index: 3000;
+            overflow-y: auto;
+            padding: 120px 60px 100px;
+        }
+
+        #gallery-view.active {
+            display: block;
+        }
+
+        #gallery-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            filter: blur(50px);
+            z-index: -1;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            overflow: hidden;
+            border-radius: 8px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: transform 0.3s ease;
+            position: relative;
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.05);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .gallery-close {
+            position: fixed;
+            top: 30px;
+            right: 40px;
+            font-size: 40px;
+            color: white;
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 3100;
+        }
+
+        /* Expanded Image View */
+        #expanded-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 4000;
+        }
+
+        #expanded-view.active {
+            display: flex;
+        }
+
+        #expanded-image {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+
+        .expanded-close {
+            position: fixed;
+            top: 30px;
+            right: 40px;
+            font-size: 40px;
+            color: white;
+            cursor: pointer;
+            pointer-events: auto;
+            z-index: 4100;
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursor -->
+    <div id="custom-cursor"></div>
+
+    <!-- Static Top Tabs -->
+    <div id="tabs-container">
+        <div class="tab green" data-tab="city">Scale of City</div>
+        <div class="tab red" data-tab="building">Scale of Building</div>
+        <div class="tab blue" data-tab="unit">Scale of Unit</div>
+    </div>
+
+    <!-- Static Bottom Text -->
+    <div id="bottom-text">INCREMENTAL ZONING</div>
+
+    <!-- Main Container -->
+    <div id="main-container">
+        <img id="landing-image" src="all overlays-100.jpg" alt="Landing Page">
+    </div>
+
+    <!-- Gallery View -->
+    <div id="gallery-view">
+        <div id="gallery-background"></div>
+        <div class="gallery-close" id="gallery-close">×</div>
+        <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+
+    <!-- Expanded Image View -->
+    <div id="expanded-view">
+        <div class="expanded-close" id="expanded-close">×</div>
+        <img id="expanded-image" src="" alt="Expanded">
+    </div>
+
+    <script>
+        // Configuration
+        const PARALLAX_FACTOR = 0.8;
+        
+        // State
+        let currentZoom = 100;
+        let zoomLevel = 0;
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        let cursorColor = '#ABCEAB';
+        let lockedCircle = null;
+        let isZooming = false;
+        let minZoom = 100;
+        let maxZoom = 300;
+        let lastMouseX = window.innerWidth / 2;
+        let lastActionTime = 0;
+        let currentAction = 'none';
+        let actionLockDuration = 300;
+        let hoveredTab = null;
+        let tabZoomCounter = 0;
+        let galleryZoomOutCounter = 0;
+        let inGalleryMode = false;
+        let inCarouselMode = false;
+        let currentCarouselImages = [];
+        let currentCarouselIndex = 0;
+
+        // ========== MOVEMENT LOCKING SYSTEM ==========
+        // Strict separation: Either horizontal scroll OR zoom, never both
+        let movementLocked = false;        // Global lock flag
+        let lockedAction = null;           // 'horizontal' or 'zoom'
+        let actionStartTime = 0;           // When current action started
+        let movementLockDuration = 500;    // Duration to lock action (ms)
+        let horizontalMovementThreshold = 5; // Pixels of movement to trigger lock
+        let zoomDetectionDelay = 100;      // Delay before zoom is allowed after movement (ms)
+        
+        // Reset movement lock after inactivity
+        function resetMovementLock() {
+            if (Date.now() - actionStartTime > movementLockDuration) {
+                movementLocked = false;
+                lockedAction = null;
+            }
+        }
+        
+        // Lock to horizontal movement
+        function lockToHorizontal() {
+            if (!movementLocked || lockedAction === 'horizontal') {
+                movementLocked = true;
+                lockedAction = 'horizontal';
+                actionStartTime = Date.now();
+            }
+        }
+        
+        // Lock to zoom
+        function lockToZoom() {
+            if (!movementLocked || lockedAction === 'zoom') {
+                movementLocked = true;
+                lockedAction = 'zoom';
+                actionStartTime = Date.now();
+            }
+        }
+        
+        // Check if horizontal movement is allowed
+        function canMoveHorizontally() {
+            return !movementLocked || lockedAction === 'horizontal';
+        }
+        
+        // Check if zoom is allowed
+        function canZoom() {
+            return !movementLocked || lockedAction === 'zoom';
+        }
+        // ========== END MOVEMENT LOCKING SYSTEM ==========
+
+        // Color requirements
+        const ZOOM_REQUIREMENTS = {
+            'green': 1,
+            'red': 2,
+            'blue': 3
+        };
+
+        // Gallery data for each tab
+        const galleryData = {
+            city: [
+                'C1.jpg', 'C2.jpg', 'C3.jpg', 'C4.jpg',
+                'C5.jpg', 'C6.jpg', 'C7.jpg', 'C8.jpg',
+                'C9.jpg', 'C10.jpg', 'C11.jpg', 'C12.png',
+               
+            ],
+            building: [
+                'B1.jpg', 'B2.jpg', 'B3.png', 'CC1.jpg',
+                'CC2.jpg', 'CC3.png', 'D1.png', 'D2.png'
+            ],
+            unit: [
+                'U1.jpg', 'U2.jpg', 'U3.jpg', 'U4.jpg',
+                'U5.jpg', 'U6.jpg', 'U7.jpg', 'U8.jpg'
+            ]
+        };
+
+        // Circle hotspot image sequences (separate from galleries)
+        const circleData = {
+            'green-1': ['1C.png', 'C2.jpg'],
+            'green-2': ['2C.png', 'C3.jpg'],
+            'green-3': ['C4.jpg'],
+            'green-4': ['C5.jpg'],
+            'green-5': ['C6.jpg', 'C7.jpg'],
+            'green-6': ['C8.jpg'],
+            'green-7': ['C9.jpg'],
+            'green-8': ['C10.jpg', 'C11.jpg'],
+            'green-9': ['C12.png', 'C13.png'],
+            'green-10': ['C11.jpg'],
+            'green-11': ['C15.jpg', 'C16.jpg'],
+            
+            'red-1': ['B1.jpg', 'B2.jpg'],
+            'red-2': ['B3.png', 'CC1.jpg'],
+            'red-3': ['CC2.jpg'],
+            'red-4': ['CC3.png'],
+            'red-5': ['D1.png', 'D2.png'],
+            'red-6': ['e1.jpg', 'e2.jpg', 'e3.jpg'],
+            'red-7': ['B1.jpg', 'B2.jpg'],
+            
+            'blue-1': ['U1.jpg', 'U2.jpg'],
+            'blue-2': ['U3.jpg', 'U4.jpg'],
+            'blue-3': ['U5.jpg', 'U6.jpg'],
+            'blue-4': ['U7.jpg', 'U8.jpg']
+        };
+
+        // Elements
+        const cursor = document.getElementById('custom-cursor');
+        const landingImage = document.getElementById('landing-image');
+        const galleryView = document.getElementById('gallery-view');
+        const galleryBackground = document.getElementById('gallery-background');
+        const galleryGrid = document.getElementById('gallery-grid');
+        const galleryClose = document.getElementById('gallery-close');
+        const expandedView = document.getElementById('expanded-view');
+        const expandedImage = document.getElementById('expanded-image');
+        const expandedClose = document.getElementById('expanded-close');
+        const tabs = document.querySelectorAll('.tab');
+
+        // Circular hotspots data
+        const circles = [
+            // GREEN CIRCLES
+            {id: 'green-1', color: 'green', x: 3.5, y: 55.8, radius: 79},
+            {id: 'green-2', color: 'green', x: 13.5, y: 31.6, radius: 85},
+            {id: 'green-3', color: 'green', x: 16.8, y: 78.9, radius: 87},
+            {id: 'green-4', color: 'green', x: 18.9, y: 9.8, radius: 25},
+            {id: 'green-5', color: 'green', x: 28.2, y: 14.4, radius: 33},
+            {id: 'green-6', color: 'green', x: 28.2, y: 71.8, radius: 86},
+            {id: 'green-7', color: 'green', x: 44.5, y: 70.9, radius: 85},
+            {id: 'green-8', color: 'green', x: 57.5, y: 59.1, radius: 30},
+            {id: 'green-9', color: 'green', x: 73.6, y: 35.6, radius: 89},
+            {id: 'green-10', color: 'green', x: 83.7, y: 81.6, radius: 88},
+            {id: 'green-11', color: 'green', x: 87.1, y: 52.4, radius: 30},
+            
+            // RED CIRCLES
+            {id: 'red-1', color: 'red', x: 19.6, y: 27.8, radius: 45},
+            {id: 'red-2', color: 'red', x: 22.4, y: 27.1, radius: 34},
+            {id: 'red-3', color: 'red', x: 66.8, y: 74.4, radius: 57},
+            {id: 'red-4', color: 'red', x: 91.8, y: 53.6, radius: 54},
+            {id: 'red-5', color: 'red', x: 91.9, y: 13.6, radius: 59},
+            {id: 'red-6', color: 'red', x: 97.4, y: 41.6, radius: 43},
+            {id: 'red-7', color: 'red', x: 98.2, y: 42.4, radius: 38},
+            
+            // BLUE CIRCLES
+            {id: 'blue-1', color: 'blue', x: 18.9, y: 53.8, radius: 28},
+            {id: 'blue-2', color: 'blue', x: 42.8, y: 23.8, radius: 28},
+            {id: 'blue-3', color: 'blue', x: 61.1, y: 89.1, radius: 25},
+            {id: 'blue-4', color: 'blue', x: 67.0, y: 92.4, radius: 25}
+        ];
+
+        // Function to check if cursor is over a tab
+        function getHoveredTab() {
+            for (let tab of tabs) {
+                const rect = tab.getBoundingClientRect();
+                if (mouseX >= rect.left && mouseX <= rect.right &&
+                    mouseY >= rect.top && mouseY <= rect.bottom) {
+                    return tab.dataset.tab;
+                }
+            }
+            return null;
+        }
+
+        // Mouse move handler
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+
+            if (currentAction !== 'zooming' && !lockedCircle && galleryView.style.display !== 'block') {
+                const mouseMoved = Math.abs(mouseX - lastMouseX);
+                
+                // Check if significant horizontal movement detected
+                if (mouseMoved > horizontalMovementThreshold) {
+                    // Check if horizontal movement is allowed
+                    if (canMoveHorizontally()) {
+                        lockToHorizontal(); // Lock to horizontal movement
+                        
+                        currentAction = 'panning';
+                        lastActionTime = Date.now();
+                        
+                        const mousePercentage = mouseX / window.innerWidth;
+                        const centerOffset = mousePercentage - 0.5;
+                        const imageWidth = landingImage.offsetWidth * (currentZoom / 100);
+                        const viewportWidth = window.innerWidth;
+                        const maxMovement = Math.max(0, (imageWidth - viewportWidth) / 2);
+                        
+                        let dynamicFactor = PARALLAX_FACTOR;
+                        if (mousePercentage < 0.2) {
+                            const edgeProgress = mousePercentage / 0.2;
+                            dynamicFactor = PARALLAX_FACTOR + (1 - PARALLAX_FACTOR) * (1 - edgeProgress);
+                        } else if (mousePercentage > 0.8) {
+                            const edgeProgress = (mousePercentage - 0.8) / 0.2;
+                            dynamicFactor = PARALLAX_FACTOR + (1 - PARALLAX_FACTOR) * edgeProgress;
+                        }
+                        
+                        // Slower movement with good horizontal range
+                        const horizontalOffset = -centerOffset * maxMovement * dynamicFactor * 1.2;
+                        const transformValue = `translateX(calc(-50% + ${horizontalOffset}px)) scale(${currentZoom / 100})`;
+                        landingImage.style.transform = transformValue;
+                    }
+                }
+                
+                lastMouseX = mouseX;
+            }
+
+            // Reset action mode and movement lock after inactivity
+            if (Date.now() - lastActionTime > actionLockDuration && currentAction === 'panning') {
+                currentAction = 'none';
+            }
+            resetMovementLock();
+        });
+
+        // Wheel handler
+        document.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            // If in carousel mode (viewing circle hotspot images)
+            if (inCarouselMode) {
+                const delta = e.deltaY;
+                
+                if (delta < 0) { // Zoom in / Next image
+                    if (currentCarouselIndex < currentCarouselImages.length - 1) {
+                        currentCarouselIndex++;
+                        expandedImage.src = currentCarouselImages[currentCarouselIndex];
+                    }
+                } else { // Zoom out / Previous image or exit
+                    if (currentCarouselIndex > 0) {
+                        currentCarouselIndex--;
+                        expandedImage.src = currentCarouselImages[currentCarouselIndex];
+                    } else {
+                        // Exit carousel
+                        expandedView.classList.remove('active');
+                        inCarouselMode = false;
+                        currentCarouselImages = [];
+                        currentCarouselIndex = 0;
+                        currentZoom = 100;
+                        zoomLevel = 0;
+                        lockedCircle = null;
+                        landingImage.style.transform = 'translateX(-50%) scale(1)';
+                    }
+                }
+                return;
+            }
+            
+            // If in gallery mode, handle zoom out to return to landing page
+            if (inGalleryMode) {
+                const delta = e.deltaY;
+                
+                if (delta > 0) { // Zooming out
+                    galleryZoomOutCounter++;
+                    
+                    if (galleryZoomOutCounter >= 3) {
+                        // Return to landing page after 3 zoom outs
+                        galleryView.style.display = 'none';
+                        inGalleryMode = false;
+                        galleryZoomOutCounter = 0;
+                        currentZoom = 100;
+                        zoomLevel = 0;
+                        tabZoomCounter = 0;
+                        hoveredTab = null;
+                        landingImage.style.transform = 'translateX(-50%) scale(1)';
+                        currentAction = 'none';
+                        movementLocked = false;
+                        lockedAction = null;
+                    }
+                } else {
+                    // Zooming in resets the counter
+                    galleryZoomOutCounter = 0;
+                }
+                return;
+            }
+
+            if (expandedView.classList.contains('active')) return;
+
+            // ========== ZOOM LOCK CHECK ==========
+            // Check if zoom is allowed (not locked to horizontal movement)
+            if (!canZoom()) {
+                console.log('Zoom blocked: horizontal movement active');
+                return; // Block zoom if horizontal movement is active
+            }
+            // =====================================
+
+            lockToZoom(); // Lock to zoom action
+            currentAction = 'zooming';
+            lastActionTime = Date.now();
+            isZooming = true;
+            
+            const delta = e.deltaY > 0 ? -5 : 5;
+            const oldZoom = currentZoom;
+            currentZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom + delta));
+            
+            // Check if hovering over a tab
+            const currentHoveredTab = getHoveredTab();
+            
+            if (currentHoveredTab) {
+                // Hovering over a tab
+                if (currentHoveredTab !== hoveredTab) {
+                    // New tab, reset counter
+                    hoveredTab = currentHoveredTab;
+                    tabZoomCounter = 0;
+                }
+                
+                if (delta > 0) { // Zooming in
+                    tabZoomCounter++;
+                    
+                    if (tabZoomCounter >= 2) {
+                        // Open gallery after 2 zoom ins on tab
+                        openGallery(hoveredTab);
+                        inGalleryMode = true;
+                        tabZoomCounter = 0;
+                        hoveredTab = null;
+                        movementLocked = false;
+                        lockedAction = null;
+                        return;
+                    }
+                } else { // Zooming out
+                    tabZoomCounter = Math.max(0, tabZoomCounter - 1);
+                }
+            } else {
+                // Not hovering over tab, reset
+                if (hoveredTab !== null) {
+                    hoveredTab = null;
+                    tabZoomCounter = 0;
+                }
+                
+                // Normal circle hover detection
+                const hoveredCircle = getHoveredCircle();
+                
+                if (hoveredCircle && !lockedCircle && currentZoom > 100) {
+                    lockedCircle = hoveredCircle;
+                    console.log(`Locked to circle: ${lockedCircle.id}`);
+                }
+                
+                if (delta > 0 && currentZoom > oldZoom) {
+                    if (currentZoom > 100 && oldZoom === 100) zoomLevel = 1;
+                    else if (currentZoom > 140 && oldZoom <= 140) zoomLevel = 2;
+                    else if (currentZoom > 180 && oldZoom <= 180) zoomLevel = 3;
+                } else if (delta < 0 && currentZoom === 100) {
+                    zoomLevel = 0;
+                    lockedCircle = null;
+                }
+                
+                updateCursorColor();
+                
+                const viewportWidth = window.innerWidth;
+                let targetXPercent, targetYPercent;
+                
+                if (lockedCircle) {
+                    targetXPercent = lockedCircle.x / 100;
+                    targetYPercent = lockedCircle.y / 100;
+                } else {
+                    const imgRect = landingImage.getBoundingClientRect();
+                    const mouseXInImg = (mouseX - imgRect.left) / imgRect.width;
+                    const mouseYInImg = (mouseY - imgRect.top) / imgRect.height;
+                    targetXPercent = Math.max(0, Math.min(1, mouseXInImg));
+                    targetYPercent = Math.max(0, Math.min(1, mouseYInImg));
+                }
+                
+                const imageWidth = landingImage.offsetWidth * (currentZoom / 100);
+                const targetXInScaledImg = imageWidth * targetXPercent;
+                const centerScreenX = viewportWidth / 2;
+                
+                let offsetX = centerScreenX - targetXInScaledImg;
+                const maxOffsetX = Math.max(0, (imageWidth - viewportWidth) / 2);
+                offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, offsetX));
+                
+                const transformValue = `translateX(calc(-50% + ${offsetX}px)) scale(${currentZoom / 100})`;
+                landingImage.style.transform = transformValue;
+                
+                if (lockedCircle) {
+                    const requiredZooms = ZOOM_REQUIREMENTS[lockedCircle.color];
+                    if (zoomLevel === requiredZooms) {
+                        // Open carousel for this circle
+                        openCircleCarousel(lockedCircle.id);
+                    }
+                }
+            }
+            
+            setTimeout(() => {
+                if (Date.now() - lastActionTime >= actionLockDuration) {
+                    currentAction = 'none';
+                    isZooming = false;
+                }
+            }, actionLockDuration);
+        }, { passive: false });
+
+        function getHoveredCircle() {
+            const imgRect = landingImage.getBoundingClientRect();
+            const imgWidth = imgRect.width;
+            const imgHeight = imgRect.height;
+            const mouseXInImg = mouseX - imgRect.left;
+            const mouseYInImg = mouseY - imgRect.top;
+            const mouseXPercent = (mouseXInImg / imgWidth) * 100;
+            const mouseYPercent = (mouseYInImg / imgHeight) * 100;
+            
+            for (let circle of circles) {
+                const dx = mouseXPercent - circle.x;
+                const dy = mouseYPercent - circle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const radiusPercent = (circle.radius / imgWidth) * 100 * (currentZoom / 100);
+                
+                if (distance <= radiusPercent) {
+                    return circle;
+                }
+            }
+            return null;
+        }
+
+        function updateCursorColor() {
+            const zoomRange = maxZoom - minZoom;
+            const zoomProgress = ((currentZoom - minZoom) / zoomRange) * 100;
+            
+            if (zoomProgress >= 50) {
+                cursor.style.backgroundColor = '#72AFE9';
+                cursorColor = '#72AFE9';
+            } else if (zoomProgress >= 30) {
+                cursor.style.backgroundColor = '#FFABAB';
+                cursorColor = '#FFABAB';
+            } else {
+                cursor.style.backgroundColor = '#ABCEAB';
+                cursorColor = '#ABCEAB';
+            }
+        }
+
+        function openCircleCarousel(circleId) {
+            currentCarouselImages = circleData[circleId] || [];
+            if (currentCarouselImages.length === 0) return;
+            
+            currentCarouselIndex = 0;
+            inCarouselMode = true;
+            expandedImage.src = currentCarouselImages[currentCarouselIndex];
+            expandedView.classList.add('active');
+            lockedCircle = null;
+        }
+
+        function openGallery(type) {
+            // Type can be 'city', 'building', 'unit' directly from tabs
+            const images = galleryData[type];
+            
+            // Set blurred landing page as background
+            galleryBackground.style.backgroundImage = `url(${landingImage.src})`;
+            
+            galleryGrid.innerHTML = '';
+            images.forEach(img => {
+                const item = document.createElement('div');
+                item.className = 'gallery-item';
+                item.innerHTML = `<img src="${img}" alt="Gallery Image">`;
+                item.addEventListener('click', () => {
+                    expandedImage.src = img;
+                    expandedView.classList.add('active');
+                });
+                galleryGrid.appendChild(item);
+            });
+            
+            galleryView.style.display = 'block';
+        }
+
+        // Close buttons
+        galleryClose.addEventListener('click', () => {
+            galleryView.style.display = 'none';
+            inGalleryMode = false;
+            galleryZoomOutCounter = 0;
+            currentZoom = 100;
+            zoomLevel = 0;
+            tabZoomCounter = 0;
+            hoveredTab = null;
+            landingImage.style.transform = 'translateX(-50%) scale(1)';
+            currentAction = 'none';
+            movementLocked = false;
+            lockedAction = null;
+        });
+
+        expandedClose.addEventListener('click', () => {
+            expandedView.classList.remove('active');
+        });
+
+        cursor.style.left = mouseX + 'px';
+        cursor.style.top = mouseY + 'px';
+    </script>
+</body>
+</html>

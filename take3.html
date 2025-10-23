@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trumansburg Urban Imprint | Design Project</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none !important;
+        }
+
+        /* Custom Cursor */
+        .custom-cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            background-color: rgba(255, 171, 171, 0.4);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s ease-out, width 0.2s, height 0.2s;
+        }
+
+        .custom-cursor.hover {
+            width: 30px;
+            height: 30px;
+            background-color: rgba(255, 171, 171, 0.6);
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            overflow-x: hidden;
+        }
+
+        /* Landing Page - Zoomable Drawing */
+        .landing-page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #1a1a1a;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .zoom-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .zoomable-drawing {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+            max-width: 95vw;
+            max-height: 95vh;
+            width: auto;
+            height: auto;
+        }
+
+        .zoomable-drawing img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            font-size: 3rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            font-weight: 300;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .section {
+            background: white;
+            margin: 2rem 0;
+            padding: 3rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .section h2 {
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 2rem;
+            color: #1a1a1a;
+            border-bottom: 3px solid #e63946;
+            padding-bottom: 0.5rem;
+        }
+
+        .model-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .model-image {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transition: transform 0.3s ease;
+        }
+
+        .model-image:hover {
+            transform: scale(1.03);
+        }
+
+        .model-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .stat-card h3 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card p {
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .data-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .data-card {
+            background: #f8f9fa;
+            padding: 2rem;
+            border-radius: 8px;
+            border-left: 4px solid #e63946;
+        }
+
+        .data-card h3 {
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-bottom: 1rem;
+            color: #1a1a1a;
+        }
+
+        .data-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .data-item:last-child {
+            border-bottom: none;
+        }
+
+        .data-label {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .data-value {
+            font-weight: 700;
+            color: #e63946;
+        }
+
+        .funding-cycle {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 3rem 0;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .funding-node {
+            text-align: center;
+            padding: 1.5rem;
+            margin: 1rem;
+            background: white;
+            border-radius: 50%;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .funding-node:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+        }
+
+        .funding-node h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 1rem;
+            color: #1a1a1a;
+        }
+
+        .zoning-info {
+            background: linear-gradient(135deg, #e63946 0%, #c62828 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .zoning-info h3 {
+            font-size: 1.8rem;
+            font-weight: 300;
+            margin-bottom: 1rem;
+        }
+
+        .zoning-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .zoning-item {
+            background: rgba(255,255,255,0.2);
+            padding: 1rem;
+            border-radius: 4px;
+            font-size: 0.95rem;
+        }
+
+        footer {
+            background: #1a1a1a;
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 4rem;
+        }
+
+        footer p {
+            font-weight: 300;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+
+            .section {
+                padding: 1.5rem;
+            }
+
+            .model-gallery {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursor -->
+    <div class="custom-cursor" id="customCursor"></div>
+
+    <!-- Landing Page with Zoomable Drawing -->
+    <div class="landing-page" id="landingPage">
+        <div class="zoom-container" id="zoomContainer">
+            <div class="zoomable-drawing" id="zoomableDrawing">
+                <img src="main.png" alt="Trumansburg Zoning Map" id="drawingImage">
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden content sections - not accessible -->
+    <div style="display: none;">
+    <header>
+        <h1>URBAN IMPRINT</h1>
+        <p>Trumansburg Redevelopment Project</p>
+        <p style="font-size: 1rem; margin-top: 1rem; opacity: 0.7;">Zach, Molly, Sara</p>
+    </header>
+
+    <div class="container">
+        <section class="section">
+            <h2>Project Overview</h2>
+            <p style="font-size: 1.1rem; line-height: 1.8;">
+                The Trumansburg Urban Imprint project represents a comprehensive approach to village redevelopment in 
+                Tompkins County, New York. This design initiative addresses commercial development, residential needs, 
+                and community infrastructure while respecting the existing urban fabric and natural environment.
+            </p>
+        </section>
+
+        <section class="section">
+            <h2>Key Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>718</h3>
+                    <p>Workers Outflow</p>
+                </div>
+                <div class="stat-card">
+                    <h3>496</h3>
+                    <p>Workers Inflow</p>
+                </div>
+                <div class="stat-card">
+                    <h3>52</h3>
+                    <p>Internal Workers</p>
+                </div>
+                <div class="stat-card">
+                    <h3>58%</h3>
+                    <p>Owner Occupied</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Demographic Data</h2>
+            <div class="data-section">
+                <div class="data-card">
+                    <h3>Income Distribution</h3>
+                    <div class="data-item">
+                        <span class="data-label">Mean Family Income</span>
+                        <span class="data-value">$59,238</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Median Income</span>
+                        <span class="data-value">$33,879</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Average Individual</span>
+                        <span class="data-value">$38,123</span>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <h3>Housing Occupancy</h3>
+                    <div class="data-item">
+                        <span class="data-label">Owner Occupied</span>
+                        <span class="data-value">58%</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Renter Occupied</span>
+                        <span class="data-value">34%</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">Vacant</span>
+                        <span class="data-value">7%</span>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <h3>Household Size</h3>
+                    <div class="data-item">
+                        <span class="data-label">1-Person</span>
+                        <span class="data-value">41%</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">2-Person</span>
+                        <span class="data-value">35%</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">3-Person</span>
+                        <span class="data-value">13%</span>
+                    </div>
+                    <div class="data-item">
+                        <span class="data-label">4+ Person</span>
+                        <span class="data-value">11%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Zoning Districts</h2>
+            <div class="zoning-info">
+                <h3>Village of Trumansburg Zoning Map</h3>
+                <p style="margin-bottom: 1rem;">Adopted by Village Board - November 13th, 2023</p>
+                <div class="zoning-list">
+                    <div class="zoning-item">Residential</div>
+                    <div class="zoning-item">Downtown Commercial East</div>
+                    <div class="zoning-item">Downtown Commercial West</div>
+                    <div class="zoning-item">East Gateway Mixed Use</div>
+                    <div class="zoning-item">West Gateway Commercial</div>
+                    <div class="zoning-item">Commercial Industrial</div>
+                    <div class="zoning-item">Mixed Use Industrial</div>
+                    <div class="zoning-item">Wetlands Overlay</div>
+                    <div class="zoning-item">Stream Buffer Overlay</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Funding & Politics Framework</h2>
+            <div class="funding-cycle">
+                <div class="funding-node">
+                    <div style="font-size: 3rem;">🏛️</div>
+                    <h4>LESS COMMERCIAL!</h4>
+                    <p style="font-size: 0.85rem; margin-top: 0.5rem;">Dept. of Planning & Sustainability</p>
+                </div>
+                <div style="font-size: 2rem; color: #999;">→</div>
+                <div class="funding-node">
+                    <div style="font-size: 3rem;">🏢</div>
+                    <h4>MORE COMMERCIAL!</h4>
+                    <p style="font-size: 0.85rem; margin-top: 0.5rem;">NYC Buildings Dept.</p>
+                </div>
+                <div style="font-size: 2rem; color: #999;">→</div>
+                <div class="funding-node">
+                    <div style="font-size: 3rem;">🎓</div>
+                    <h4>MORE IMPACT!</h4>
+                    <p style="font-size: 0.85rem; margin-top: 0.5rem;">Cornell University</p>
+                </div>
+            </div>
+            <p style="text-align: center; color: #666; margin-top: 2rem;">
+                The project navigates complex stakeholder interests balancing environmental sustainability, 
+                commercial development, and academic research objectives.
+            </p>
+        </section>
+
+        <section class="section">
+            <h2>Architectural Model</h2>
+            <div class="model-gallery">
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0816.JPG" alt="Interior view showing red architectural elements">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0829.JPG" alt="Detail of interior space">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0849.JPG" alt="Construction detail close-up">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0858.JPG" alt="Architectural detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0862.JPG" alt="Fabric and structure detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0864.JPG" alt="Interior perspective">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0868.JPG" alt="Close-up detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0875.JPG" alt="Structural element">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0886.JPG" alt="Material detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0961.JPG" alt="Translucent facade detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0965.JPG" alt="Exterior view">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0969.JPG" alt="Facade with natural light">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A0999.JPG" alt="Underside detail with red elements">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A1016.JPG" alt="Corrugated texture detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A1020.JPG" alt="Interior space detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A1027.JPG" alt="Deck and railing detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A1096.JPG" alt="Skylight detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A1104.JPG" alt="Window frame detail">
+                </div>
+                <div class="model-image">
+                    <img src="/mnt/user-data/uploads/DO4A1107.JPG" alt="Structural opening">
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <h2>Project Context</h2>
+            <p style="font-size: 1.05rem; line-height: 1.8; margin-bottom: 1rem;">
+                Located along US Route 96 and Route 227 in Tompkins County, the project site encompasses diverse 
+                zoning districts including residential, commercial, and mixed-use areas. The design carefully 
+                considers the natural landscape features including wetlands and stream buffers.
+            </p>
+            <p style="font-size: 1.05rem; line-height: 1.8;">
+                With significant worker flow dynamics (718 outflow vs. 496 inflow), the project aims to create 
+                economic opportunities that better serve the local population while maintaining the village's 
+                character and environmental integrity.
+            </p>
+        </section>
+    </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2025 Urban Imprint Project | Trumansburg, Tompkins County, New York</p>
+        <p style="margin-top: 0.5rem;">Design Team: Zach, Molly, Sara</p>
+        <p style="margin-top: 1rem; font-size: 0.9rem;">Source: Trumansburg Comprehensive Plan</p>
+    </footer>
+    </div>
+    <!-- End hidden content -->
+
+    <script>
+        // ============================================
+        // CUSTOM CURSOR
+        // ============================================
+        const cursor = document.getElementById('customCursor');
+        let mouseX = 0;
+        let mouseY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+        });
+
+        // Cursor hover effect on interactive elements
+        const interactiveElements = document.querySelectorAll('button, a, .zoom-btn, .hotspot');
+        interactiveElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.classList.add('hover');
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.classList.remove('hover');
+            });
+        });
+
+        // ============================================
+        // LANDING PAGE - CURSOR FOLLOW HORIZONTAL MOVEMENT
+        // ============================================
+        const landingPage = document.getElementById('landingPage');
+        const zoomContainer = document.getElementById('zoomContainer');
+        const drawing = document.getElementById('zoomableDrawing');
+        const drawingImage = document.getElementById('drawingImage');
+
+        let scale = 1;
+        let translateX = 0;
+        let translateY = 0;
+
+        const MIN_SCALE = 0.5;
+        const MAX_SCALE = 5;
+        const SCALE_STEP = 0.2;
+
+        // Update transform
+        function updateTransform() {
+            drawing.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`;
+        }
+
+        // Cursor-following horizontal movement
+        let animationFrameId = null;
+        
+        document.addEventListener('mousemove', (e) => {
+            // Cancel previous animation frame
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            
+            // Calculate horizontal position as percentage
+            const mouseXPercent = e.clientX / window.innerWidth;
+            
+            // Map mouse position to translateX range
+            // When mouse is at left (0%), translate right (+)
+            // When mouse is at right (100%), translate left (-)
+            const maxTranslate = 300; // Maximum pixels to translate
+            translateX = (0.5 - mouseXPercent) * maxTranslate * 2;
+            
+            // Smooth animation
+            animationFrameId = requestAnimationFrame(() => {
+                updateTransform();
+            });
+        });
+
+        // Mouse wheel zoom
+        zoomContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            const delta = e.deltaY > 0 ? -SCALE_STEP : SCALE_STEP;
+            const newScale = Math.min(Math.max(scale + delta, MIN_SCALE), MAX_SCALE);
+            
+            if (newScale !== scale) {
+                scale = newScale;
+                updateTransform();
+            }
+        }, { passive: false });
+
+        // ============================================
+        // Initialize page
+        // ============================================
+        updateTransform();
+
+        // After the custom cursor code, add hover effects for all interactive elements on the page
+        setTimeout(() => {
+            const allInteractive = document.querySelectorAll('button, a, .model-image, .stat-card, .data-card, .funding-node');
+            allInteractive.forEach(el => {
+                el.addEventListener('mouseenter', () => {
+                    cursor.classList.add('hover');
+                });
+                el.addEventListener('mouseleave', () => {
+                    cursor.classList.remove('hover');
+                });
+            });
+        }, 1000);
+    </script>
+</html>

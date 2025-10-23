@@ -1,0 +1,903 @@
+<<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Zoom Website</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none;
+        }
+
+        body {
+            overflow: hidden;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 300;
+            background: #000;
+        }
+
+        /* Custom Cursor */
+        #custom-cursor {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #ABCEAB;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            transition: background-color 0.3s ease, width 0.3s ease, height 0.3s ease;
+        }
+
+        /* Main Container */
+        #main-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Landing Page Image */
+        #landing-image {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            height: 100vh;
+            width: auto;
+            min-width: 100vw;
+            object-fit: cover;
+            object-position: center;
+            transform: translateX(-50%);
+            transition: transform 0.15s ease-out;
+            will-change: transform;
+        }
+
+        /* Overlay Images (Hotspots) */
+        .overlay-image {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            height: 100vh;
+            width: auto;
+            min-width: 100vw;
+            object-fit: cover;
+            object-position: center;
+            transform: translateX(-50%);
+            transition: transform 0.15s ease-out;
+            will-change: transform;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Zoomable Regions/Hotspots */
+        .zoomable-region {
+            position: absolute;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            pointer-events: auto;
+            z-index: 20;
+            cursor: none;
+        }
+
+        .zoomable-region:hover {
+            border-color: rgba(171, 206, 171, 0.6);
+            background-color: rgba(171, 206, 171, 0.1);
+            box-shadow: 0 0 20px rgba(171, 206, 171, 0.4);
+        }
+
+        .zoomable-region.red-cursor:hover {
+            border-color: rgba(255, 171, 171, 0.6);
+            background-color: rgba(255, 171, 171, 0.1);
+            box-shadow: 0 0 20px rgba(255, 171, 171, 0.4);
+        }
+
+        .zoomable-region.blue-cursor:hover {
+            border-color: rgba(114, 175, 233, 0.6);
+            background-color: rgba(114, 175, 233, 0.1);
+            box-shadow: 0 0 20px rgba(114, 175, 233, 0.4);
+        }
+
+        /* Hover indicator text */
+        .region-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 14px;
+            font-weight: 300;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            text-align: center;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .zoomable-region:hover .region-label {
+            opacity: 1;
+        }
+
+        /* Expanded View */
+        .expanded-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .expanded-view.active {
+            display: flex;
+        }
+
+        .expanded-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            filter: blur(20px);
+            opacity: 0.15;
+            z-index: 1;
+        }
+
+        .expanded-image {
+            position: relative;
+            max-width: 80%;
+            max-height: 80%;
+            z-index: 2;
+            transition: transform 0.3s ease;
+        }
+
+        /* Title */
+        .title {
+            position: fixed;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 32px;
+            font-weight: 300;
+            z-index: 200;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .title.visible {
+            opacity: 1;
+        }
+
+        /* Instructions */
+        #instructions {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 16px;
+            z-index: 1000;
+            text-align: center;
+            opacity: 0.7;
+            transition: opacity 0.5s ease;
+        }
+
+        #instructions.fade-out {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursor -->
+    <div id="custom-cursor"></div>
+
+    <!-- Instructions -->
+    <div id="instructions">
+        Move your mouse to explore • Zoom by scrolling
+    </div>
+
+    <!-- Main Container -->
+    <div id="main-container">
+        <!-- Landing Page Image (Replace with your image) -->
+        <img id="landing-image" src="all overlays-100.jpg" alt="Landing Page">
+        
+        <!-- Zoomable Regions - Manually define areas that can be zoomed into -->
+        <!-- Each region needs: left, top, width, height (in % or px), and data attributes -->
+        
+        <!-- Example Region 1: Top-left area -->
+        <div class="zoomable-region" 
+             data-region-id="region1"
+             data-sequence='["https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200", "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1200", "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=1200"]'
+             data-titles='["Mountain Vista", "Forest Path", "Meadow Dreams"]'
+             data-hover-text="Zoom into Mountains"
+             style="left: 20%; top: 30%; width: 200px; height: 150px;">
+            <span class="region-label">Zoom into Mountains</span>
+        </div>
+        
+        <!-- Example Region 2: Right side area -->
+        <div class="zoomable-region" 
+             data-region-id="region2"
+             data-sequence='["https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=1200", "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=1200", "https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=1200"]'
+             data-titles='["Ocean Waves", "Coastal Beauty", "Sunset Horizon"]'
+             data-hover-text="Explore the Coast"
+             style="left: 65%; top: 50%; width: 180px; height: 180px;">
+            <span class="region-label">Explore the Coast</span>
+        </div>
+        
+        <!-- Example Region 3: Center area -->
+        <div class="zoomable-region" 
+             data-region-id="region3"
+             data-sequence='["https://images.unsplash.com/photo-1511884642898-4c92249e20b6?w=1200", "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=1200"]'
+             data-titles='["Sky View", "Cloud Dreams"]'
+             data-hover-text="Look Up"
+             style="left: 45%; top: 20%; width: 150px; height: 120px;">
+            <span class="region-label">Look Up</span>
+        </div>
+    </div>
+
+    <!-- Expanded View Container -->
+    <div id="expanded-view" class="expanded-view">
+        <div class="expanded-background"></div>
+        <img id="expanded-image" class="expanded-image" src="" alt="Expanded View">
+    </div>
+
+    <!-- Title -->
+    <div id="title" class="title"></div>
+
+    <script>
+        // Configuration
+        const ZOOM_THRESHOLD_1 = 60; // First color change at 60% zoom
+        const ZOOM_THRESHOLD_2 = 100; // Second color change at 100% zoom
+        const ZOOM_INCREMENT = 15; // Percentage to zoom for transitions
+        const PARALLAX_FACTOR = 0.8; // Reduced for more controlled movement (was 2)
+
+        // State
+        let currentZoom = 100; // Start at 100% (full screen)
+        let zoomLevel = 0; // Track number of zoom actions (scroll events)
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        let activeHotspot = null;
+        let currentImageIndex = 0;
+        let imageSequence = [];
+        let titleSequence = [];
+        let cursorColor = '#ABCEAB';
+        let isExpanded = false;
+        let minZoom = 100; // Cannot zoom out beyond 100%
+        let maxZoom = 300; // Maximum zoom in to 300%
+        let lastHoveredRegion = null; // Track which region we're hovering over
+        
+        // True cursor-centered zoom state
+        let lockedCircle = null; // Which circle is locked
+        let zoomFocusX = 0; // X offset to keep focus point centered
+        let zoomFocusY = 0; // Y offset to keep focus point centered
+        let isZooming = false; // Flag to prevent horizontal movement during zoom
+        
+        // Either/Or movement control
+        let lastMouseX = window.innerWidth / 2;
+        let lastActionTime = 0;
+        let currentAction = 'none'; // 'none', 'panning', 'zooming'
+        let actionLockDuration = 300; // ms to lock action mode
+        
+        // Zoom requirements by color
+        const ZOOM_REQUIREMENTS = {
+            'green': 1,  // Green circles need 1 zoom
+            'red': 2,    // Red circles need 2 zooms
+            'blue': 3    // Blue circles need 3 zooms
+        };
+
+        // Elements
+        const cursor = document.getElementById('custom-cursor');
+        const landingImage = document.getElementById('landing-image');
+        const expandedView = document.getElementById('expanded-view');
+        const expandedImage = document.getElementById('expanded-image');
+        const expandedBackground = document.querySelector('.expanded-background');
+        const title = document.getElementById('title');
+        const instructions = document.getElementById('instructions');
+        const zoomableRegions = document.querySelectorAll('.zoomable-region');
+        const overlayImages = document.querySelectorAll('.overlay-image');
+
+        // Mouse move handler
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            // Update cursor position - cursor moves freely
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+
+            // Only allow horizontal movement if NOT zooming and NOT locked to circle
+            if (!isExpanded && currentAction !== 'zooming' && !lockedCircle) {
+                // Check if mouse has moved significantly (not just hovering)
+                const mouseMoved = Math.abs(mouseX - lastMouseX) > 2;
+                
+                if (mouseMoved) {
+                    // Set action to panning
+                    currentAction = 'panning';
+                    lastActionTime = Date.now();
+                    
+                    // Calculate horizontal offset based on mouse position
+                    const mousePercentage = mouseX / window.innerWidth; // 0 to 1
+                    const centerOffset = mousePercentage - 0.5; // -0.5 to 0.5
+                    
+                    // Get image width to calculate maximum movement
+                    const imageWidth = landingImage.offsetWidth * (currentZoom / 100);
+                    const viewportWidth = window.innerWidth;
+                    const maxMovement = Math.max(0, (imageWidth - viewportWidth) / 2);
+                    
+                    // Apply easing to the edges for controlled movement
+                    let dynamicFactor = PARALLAX_FACTOR;
+                    
+                    if (mousePercentage < 0.2) {
+                        const edgeProgress = mousePercentage / 0.2;
+                        dynamicFactor = PARALLAX_FACTOR + (1 - PARALLAX_FACTOR) * (1 - edgeProgress);
+                    } else if (mousePercentage > 0.8) {
+                        const edgeProgress = (mousePercentage - 0.8) / 0.2;
+                        dynamicFactor = PARALLAX_FACTOR + (1 - PARALLAX_FACTOR) * edgeProgress;
+                    }
+                    
+                    // Apply horizontal movement with much slower speed
+                    const horizontalOffset = -centerOffset * maxMovement * dynamicFactor * 0.5;
+                    
+                    const transformValue = `translateX(calc(-50% + ${horizontalOffset}px)) scale(${currentZoom / 100})`;
+                    landingImage.style.transform = transformValue;
+                    
+                    // Move overlay images with the landing image (perfect sync)
+                    overlayImages.forEach(overlay => {
+                        overlay.style.transform = transformValue;
+                    });
+                    
+                    // Move all zoomable regions with the landing image
+                    zoomableRegions.forEach(region => {
+                        region.style.transform = transformValue;
+                        
+                        // Update region hover color based on cursor color
+                        region.classList.remove('red-cursor', 'blue-cursor');
+                        if (cursorColor === '#FFABAB') {
+                            region.classList.add('red-cursor');
+                        } else if (cursorColor === '#72AFE9') {
+                            region.classList.add('blue-cursor');
+                        }
+                    });
+                }
+                
+                lastMouseX = mouseX;
+            }
+
+            // Reset action mode after inactivity
+            if (Date.now() - lastActionTime > actionLockDuration && currentAction === 'panning') {
+                currentAction = 'none';
+            }
+
+            // Hide instructions after first mouse move
+            if (!instructions.classList.contains('fade-out')) {
+                setTimeout(() => {
+                    instructions.classList.add('fade-out');
+                }, 1000);
+            }
+        });
+
+        // Function to check if mouse is over non-transparent area of overlay image
+        function isOverNonTransparentArea(overlay, mouseX, mouseY) {
+            const rect = overlay.getBoundingClientRect();
+            
+            // Check if mouse is within image bounds
+            if (mouseX < rect.left || mouseX > rect.right || 
+                mouseY < rect.top || mouseY > rect.bottom) {
+                return false;
+            }
+            
+            // Calculate position relative to image
+            const x = Math.floor((mouseX - rect.left) / rect.width * overlay.naturalWidth);
+            const y = Math.floor((mouseY - rect.top) / rect.height * overlay.naturalHeight);
+            
+            // Create canvas to check pixel alpha
+            if (!overlay._canvas) {
+                overlay._canvas = document.createElement('canvas');
+                overlay._ctx = overlay._canvas.getContext('2d');
+                overlay._canvas.width = overlay.naturalWidth;
+                overlay._canvas.height = overlay.naturalHeight;
+                overlay._ctx.drawImage(overlay, 0, 0);
+            }
+            
+            // Get pixel data
+            try {
+                const pixelData = overlay._ctx.getImageData(x, y, 1, 1).data;
+                const alpha = pixelData[3];
+                
+                // Consider pixel as "non-transparent" if alpha > 10 (adjust threshold as needed)
+                return alpha > 10;
+            } catch (e) {
+                // CORS issue or image not loaded - assume opaque
+                return true;
+            }
+        }
+
+        // Function to find which overlay image's non-transparent area is under the cursor
+        function getHoveredOverlayRegion() {
+            for (let overlay of overlayImages) {
+                // Skip if overlay doesn't have data attributes
+                if (!overlay.dataset.sequence) continue;
+                
+                if (isOverNonTransparentArea(overlay, mouseX, mouseY)) {
+                    return overlay;
+                }
+            }
+            return null;
+        }
+
+        // Wheel handler for zoom
+        document.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            if (!isExpanded) {
+                // Set action to zooming - this prevents panning
+                currentAction = 'zooming';
+                lastActionTime = Date.now();
+                isZooming = true; // Prevent horizontal movement during zoom
+                
+                // Zooming on landing page
+                const delta = e.deltaY > 0 ? -5 : 5; // Positive = zoom in, negative = zoom out
+                const oldZoom = currentZoom;
+                currentZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom + delta));
+                
+                // Check if hovering over a circle to lock onto it
+                const hoveredCircle = getHoveredCircle();
+                
+                if (hoveredCircle && !lockedCircle && currentZoom > 100) {
+                    // Lock to this circle
+                    lockedCircle = hoveredCircle;
+                    console.log(`Locked to circle: ${lockedCircle.id}`);
+                }
+                
+                // Track zoom level changes (only when zooming in from base)
+                if (delta > 0 && currentZoom > oldZoom) {
+                    // Zooming in
+                    if (currentZoom > 100 && oldZoom === 100) {
+                        zoomLevel = 1; // First zoom
+                    } else if (currentZoom > 140 && oldZoom <= 140) {
+                        zoomLevel = 2; // Second zoom
+                    } else if (currentZoom > 180 && oldZoom <= 180) {
+                        zoomLevel = 3; // Third zoom
+                    }
+                } else if (delta < 0 && currentZoom === 100) {
+                    // Reset zoom level and lock when back to base
+                    zoomLevel = 0;
+                    lockedCircle = null;
+                }
+                
+                updateCursorColor();
+                
+                // TRUE CURSOR-CENTERED ZOOM
+                // Get the landing image dimensions and position
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                
+                // Calculate the target point based on locked circle or cursor
+                let targetXPercent, targetYPercent;
+                
+                if (lockedCircle) {
+                    // Use locked circle center as target
+                    targetXPercent = lockedCircle.x / 100;
+                    targetYPercent = lockedCircle.y / 100;
+                } else {
+                    // Use cursor position as target
+                    const imgRect = landingImage.getBoundingClientRect();
+                    const mouseXInImg = (mouseX - imgRect.left) / imgRect.width;
+                    const mouseYInImg = (mouseY - imgRect.top) / imgRect.height;
+                    targetXPercent = Math.max(0, Math.min(1, mouseXInImg));
+                    targetYPercent = Math.max(0, Math.min(1, mouseYInImg));
+                }
+                
+                // Calculate offsets to center the target point
+                // Target point should be at screen center
+                const imageWidth = landingImage.offsetWidth * (currentZoom / 100);
+                const imageHeight = landingImage.offsetHeight * (currentZoom / 100);
+                
+                // Where the target point will be in the scaled image
+                const targetXInScaledImg = imageWidth * targetXPercent;
+                const targetYInScaledImg = imageHeight * targetYPercent;
+                
+                // Calculate offset to center this point
+                const centerScreenX = viewportWidth / 2;
+                const centerScreenY = viewportHeight / 2;
+                
+                // Offset needed to place target at screen center
+                let offsetX = centerScreenX - targetXInScaledImg;
+                let offsetY = centerScreenY - targetYInScaledImg;
+                
+                // Constrain to image bounds (don't show empty space)
+                const maxOffsetX = Math.max(0, (imageWidth - viewportWidth) / 2);
+                const maxOffsetY = Math.max(0, (imageHeight - viewportHeight) / 2);
+                
+                offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, offsetX));
+                offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, offsetY));
+                
+                // Apply transform with cursor/circle-centered zoom (no vertical offset for horizontal image)
+                const transformValue = `translateX(calc(-50% + ${offsetX}px)) scale(${currentZoom / 100})`;
+                landingImage.style.transform = transformValue;
+                
+                // Move overlay images with landing image (perfect sync)
+                overlayImages.forEach(overlay => {
+                    overlay.style.transform = transformValue;
+                });
+                
+                // Move zoomable regions with landing image
+                zoomableRegions.forEach(region => {
+                    region.style.transform = transformValue;
+                });
+                
+                // Check if we should activate the circle
+                if (lockedCircle) {
+                    const requiredZooms = ZOOM_REQUIREMENTS[lockedCircle.color];
+                    
+                    // Activate when zoom level matches required zooms for this color
+                    if (zoomLevel === requiredZooms) {
+                        activateCircle(lockedCircle);
+                        lockedCircle = null; // Unlock after activation
+                    }
+                }
+                
+                // Keep action locked to zooming for a duration after zoom stops
+                setTimeout(() => {
+                    if (Date.now() - lastActionTime >= actionLockDuration) {
+                        currentAction = 'none';
+                        isZooming = false;
+                    }
+                }, actionLockDuration);
+                
+            } else {
+                // In expanded view - navigate through image sequence
+                const delta = e.deltaY;
+                
+                if (delta < 0) {
+                    // Scrolling up - go to next image
+                    if (currentImageIndex < imageSequence.length - 1) {
+                        currentImageIndex++;
+                        expandedImage.src = imageSequence[currentImageIndex];
+                        title.textContent = titleSequence[currentImageIndex];
+                        
+                        // Zoom animation
+                        expandedImage.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            expandedImage.style.transform = 'scale(1)';
+                        }, 50);
+                    }
+                } else {
+                    // Scrolling down - go to previous image or exit
+                    if (currentImageIndex > 0) {
+                        currentImageIndex--;
+                        expandedImage.src = imageSequence[currentImageIndex];
+                        title.textContent = titleSequence[currentImageIndex];
+                        
+                        // Zoom animation
+                        expandedImage.style.transform = 'scale(1.05)';
+                        setTimeout(() => {
+                            expandedImage.style.transform = 'scale(1)';
+                        }, 50);
+                    } else {
+                        // Exit expanded view
+                        exitExpandedView();
+                    }
+                }
+            }
+        }, { passive: false });
+
+        function updateCursorColor() {
+            // Zoom ranges: 100% (full screen) to 300% (max zoom)
+            // Calculate percentage within the zoom range for color transitions
+            const zoomRange = maxZoom - minZoom; // 200
+            const zoomProgress = ((currentZoom - minZoom) / zoomRange) * 100; // 0-100
+            
+            if (zoomProgress >= 50) { // At 200% zoom (halfway through range)
+                cursor.style.backgroundColor = '#72AFE9'; // Blue
+                cursorColor = '#72AFE9';
+            } else if (zoomProgress >= 30) { // At 160% zoom (30% through range)
+                cursor.style.backgroundColor = '#FFABAB'; // Red
+                cursorColor = '#FFABAB';
+            } else {
+                cursor.style.backgroundColor = '#ABCEAB'; // Green
+                cursorColor = '#ABCEAB';
+            }
+        }
+
+        function getHoveredCircle() {
+            // Define all circular hotspots with their exact positions and colors
+            const circles = [
+                // GREEN CIRCLES (need 1 zoom)
+                {id: 'green-1', color: 'green', x: 3.5, y: 55.8, radius: 79},
+                {id: 'green-2', color: 'green', x: 13.5, y: 31.6, radius: 85},
+                {id: 'green-3', color: 'green', x: 16.8, y: 78.9, radius: 87},
+                {id: 'green-4', color: 'green', x: 18.9, y: 9.8, radius: 25},
+                {id: 'green-5', color: 'green', x: 28.2, y: 14.4, radius: 33},
+                {id: 'green-6', color: 'green', x: 28.2, y: 71.8, radius: 86},
+                {id: 'green-7', color: 'green', x: 44.5, y: 70.9, radius: 85},
+                {id: 'green-8', color: 'green', x: 57.5, y: 59.1, radius: 30},
+                {id: 'green-9', color: 'green', x: 73.6, y: 35.6, radius: 89},
+                {id: 'green-10', color: 'green', x: 83.7, y: 81.6, radius: 88},
+                {id: 'green-11', color: 'green', x: 87.1, y: 52.4, radius: 30},
+                
+                // RED CIRCLES (need 2 zooms)
+                {id: 'red-1', color: 'red', x: 19.6, y: 27.8, radius: 45},
+                {id: 'red-2', color: 'red', x: 22.4, y: 27.1, radius: 34},
+                {id: 'red-3', color: 'red', x: 66.8, y: 74.4, radius: 57},
+                {id: 'red-4', color: 'red', x: 91.8, y: 53.6, radius: 54},
+                {id: 'red-5', color: 'red', x: 91.9, y: 13.6, radius: 59},
+                {id: 'red-6', color: 'red', x: 97.4, y: 41.6, radius: 43},
+                {id: 'red-7', color: 'red', x: 98.2, y: 42.4, radius: 38},
+                
+                // BLUE CIRCLES (need 3 zooms)
+                {id: 'blue-1', color: 'blue', x: 18.9, y: 53.8, radius: 28},
+                {id: 'blue-2', color: 'blue', x: 42.8, y: 23.8, radius: 28},
+                {id: 'blue-3', color: 'blue', x: 61.1, y: 89.1, radius: 25},
+                {id: 'blue-4', color: 'blue', x: 67.0, y: 92.4, radius: 25}
+            ];
+            
+            // Get the landing image position and dimensions
+            const imgRect = landingImage.getBoundingClientRect();
+            const imgWidth = imgRect.width;
+            const imgHeight = imgRect.height;
+            
+            // Convert mouse position to percentage relative to the image
+            const mouseXInImg = mouseX - imgRect.left;
+            const mouseYInImg = mouseY - imgRect.top;
+            const mouseXPercent = (mouseXInImg / imgWidth) * 100;
+            const mouseYPercent = (mouseYInImg / imgHeight) * 100;
+            
+            // Check each circle
+            for (let circle of circles) {
+                // Calculate distance from mouse to circle center
+                const dx = mouseXPercent - circle.x;
+                const dy = mouseYPercent - circle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Convert radius from pixels to percentage (approximate)
+                const radiusPercent = (circle.radius / imgWidth) * 100 * (currentZoom / 100);
+                
+                // Check if mouse is within circle
+                if (distance <= radiusPercent) {
+                    return circle;
+                }
+            }
+            
+            return null;
+        }
+
+        function activateCircle(circle) {
+            if (isExpanded) return;
+            
+            // You'll need to set up data-sequence and data-titles for each circle ID
+            // For now, using placeholder images - replace these with your actual images
+            const circleData = getCircleData(circle.id);
+            
+            if (!circleData) return;
+            
+            activeHotspot = circle;
+            imageSequence = circleData.sequence;
+            titleSequence = circleData.titles;
+            currentImageIndex = 0;
+            isExpanded = true;
+            
+            // Remember cursor color at beginning of zoom
+            const entryColor = window.getComputedStyle(cursor).backgroundColor;
+            
+            // Set background
+            expandedBackground.style.backgroundImage = `url(${landingImage.src})`;
+            
+            // Show first image
+            expandedImage.src = imageSequence[currentImageIndex];
+            expandedView.classList.add('active');
+            
+            // Show title
+            title.textContent = titleSequence[currentImageIndex];
+            title.style.color = rgbToHex(entryColor);
+            title.classList.add('visible');
+        }
+
+        function getCircleData(circleId) {
+            // MAP YOUR IMAGES TO EACH CIRCLE HERE
+            // Replace the URLs and titles with your actual content
+            const circleDataMap = {
+                // GREEN CIRCLES
+                'green-1': {
+                    sequence: ['A1.PNG', 'A2.PNG', 'A3.PNG'],
+                    titles: ['Green 1 - View 1', 'Green 1 - View 2', 'Green 1 - View 3']
+                },
+                'green-2': {
+                    sequence: ['green2-img1.jpg', 'green2-img2.jpg'],
+                    titles: ['Green 2 - View 1', 'Green 2 - View 2']
+                },
+                'green-3': {
+                    sequence: ['green3-img1.jpg', 'green3-img2.jpg'],
+                    titles: ['Green 3 - View 1', 'Green 3 - View 2']
+                },
+                'green-4': {
+                    sequence: ['green4-img1.jpg', 'green4-img2.jpg'],
+                    titles: ['Green 4 - View 1', 'Green 4 - View 2']
+                },
+                'green-5': {
+                    sequence: ['green5-img1.jpg', 'green5-img2.jpg'],
+                    titles: ['Green 5 - View 1', 'Green 5 - View 2']
+                },
+                'green-6': {
+                    sequence: ['green6-img1.jpg', 'green6-img2.jpg'],
+                    titles: ['Green 6 - View 1', 'Green 6 - View 2']
+                },
+                'green-7': {
+                    sequence: ['green7-img1.jpg', 'green7-img2.jpg'],
+                    titles: ['Green 7 - View 1', 'Green 7 - View 2']
+                },
+                'green-8': {
+                    sequence: ['green8-img1.jpg', 'green8-img2.jpg'],
+                    titles: ['Green 8 - View 1', 'Green 8 - View 2']
+                },
+                'green-9': {
+                    sequence: ['green9-img1.jpg', 'green9-img2.jpg'],
+                    titles: ['Green 9 - View 1', 'Green 9 - View 2']
+                },
+                'green-10': {
+                    sequence: ['green10-img1.jpg', 'green10-img2.jpg'],
+                    titles: ['Green 10 - View 1', 'Green 10 - View 2']
+                },
+                'green-11': {
+                    sequence: ['green11-img1.jpg', 'green11-img2.jpg'],
+                    titles: ['Green 11 - View 1', 'Green 11 - View 2']
+                },
+                
+                // RED CIRCLES
+                'red-1': {
+                    sequence: ['red1-img1.jpg', 'red1-img2.jpg'],
+                    titles: ['Red 1 - View 1', 'Red 1 - View 2']
+                },
+                'red-2': {
+                    sequence: ['red2-img1.jpg', 'red2-img2.jpg'],
+                    titles: ['Red 2 - View 1', 'Red 2 - View 2']
+                },
+                'red-3': {
+                    sequence: ['red3-img1.jpg', 'red3-img2.jpg'],
+                    titles: ['Red 3 - View 1', 'Red 3 - View 2']
+                },
+                'red-4': {
+                    sequence: ['red4-img1.jpg', 'red4-img2.jpg'],
+                    titles: ['Red 4 - View 1', 'Red 4 - View 2']
+                },
+                'red-5': {
+                    sequence: ['red5-img1.jpg', 'red5-img2.jpg'],
+                    titles: ['Red 5 - View 1', 'Red 5 - View 2']
+                },
+                'red-6': {
+                    sequence: ['red6-img1.jpg', 'red6-img2.jpg'],
+                    titles: ['Red 6 - View 1', 'Red 6 - View 2']
+                },
+                'red-7': {
+                    sequence: ['red7-img1.jpg', 'red7-img2.jpg'],
+                    titles: ['Red 7 - View 1', 'Red 7 - View 2']
+                },
+                
+                // BLUE CIRCLES
+                'blue-1': {
+                    sequence: ['blue1-img1.jpg', 'blue1-img2.jpg'],
+                    titles: ['Blue 1 - View 1', 'Blue 1 - View 2']
+                },
+                'blue-2': {
+                    sequence: ['blue2-img1.jpg', 'blue2-img2.jpg'],
+                    titles: ['Blue 2 - View 1', 'Blue 2 - View 2']
+                },
+                'blue-3': {
+                    sequence: ['blue3-img1.jpg', 'blue3-img2.jpg'],
+                    titles: ['Blue 3 - View 1', 'Blue 3 - View 2']
+                },
+                'blue-4': {
+                    sequence: ['blue4-img1.jpg', 'blue4-img2.jpg'],
+                    titles: ['Blue 4 - View 1', 'Blue 4 - View 2']
+                }
+            };
+            
+            return circleDataMap[circleId] || null;
+        }
+
+        function activateRegion(region) {
+            if (isExpanded) return;
+            
+            activeHotspot = region;
+            imageSequence = JSON.parse(region.dataset.sequence);
+            titleSequence = JSON.parse(region.dataset.titles);
+            currentImageIndex = 0;
+            isExpanded = true;
+            
+            // Remember cursor color at beginning of zoom
+            const entryColor = window.getComputedStyle(cursor).backgroundColor;
+            
+            // Set background
+            expandedBackground.style.backgroundImage = `url(${landingImage.src})`;
+            
+            // Show first image
+            expandedImage.src = imageSequence[currentImageIndex];
+            expandedView.classList.add('active');
+            
+            // Show title
+            title.textContent = titleSequence[currentImageIndex];
+            title.style.color = rgbToHex(entryColor);
+            title.classList.add('visible');
+        }
+
+        function activateOverlay(overlay) {
+            if (isExpanded) return;
+            
+            activeHotspot = overlay;
+            imageSequence = JSON.parse(overlay.dataset.sequence);
+            titleSequence = JSON.parse(overlay.dataset.titles);
+            currentImageIndex = 0;
+            isExpanded = true;
+            
+            // Remember cursor color at beginning of zoom
+            const entryColor = window.getComputedStyle(cursor).backgroundColor;
+            
+            // Set background
+            expandedBackground.style.backgroundImage = `url(${landingImage.src})`;
+            
+            // Show first image
+            expandedImage.src = imageSequence[currentImageIndex];
+            expandedView.classList.add('active');
+            
+            // Show title
+            title.textContent = titleSequence[currentImageIndex];
+            title.style.color = rgbToHex(entryColor);
+            title.classList.add('visible');
+        }
+
+        function exitExpandedView() {
+            expandedView.classList.remove('active');
+            title.classList.remove('visible');
+            isExpanded = false;
+            activeHotspot = null;
+            currentZoom = 100; // Reset to full screen view
+            zoomLevel = 0; // Reset zoom level counter
+            lockedCircle = null; // Reset locked circle
+            isZooming = false; // Reset zoom flag
+            currentAction = 'none'; // Reset action mode
+            updateCursorColor();
+            
+            // Reset landing image transform
+            const transformValue = `translateX(-50%) scale(1)`;
+            landingImage.style.transform = transformValue;
+            
+            // Reset overlay images
+            overlayImages.forEach(overlay => {
+                overlay.style.transform = transformValue;
+            });
+            
+            // Reset zoomable regions
+            zoomableRegions.forEach(region => {
+                region.style.transform = transformValue;
+            });
+        }
+
+        function rgbToHex(rgb) {
+            // Convert rgb(r, g, b) to #rrggbb
+            if (rgb.startsWith('#')) return rgb;
+            const match = rgb.match(/\d+/g);
+            if (!match) return '#ABCEAB';
+            const r = parseInt(match[0]).toString(16).padStart(2, '0');
+            const g = parseInt(match[1]).toString(16).padStart(2, '0');
+            const b = parseInt(match[2]).toString(16).padStart(2, '0');
+            return `#${r}${g}${b}`;
+        }
+
+        // Initialize cursor position
+        cursor.style.left = mouseX + 'px';
+        cursor.style.top = mouseY + 'px';
+    </script>
+</body>
+</html>

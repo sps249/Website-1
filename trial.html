@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Zoom Experience - Complete</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: none !important;
+        }
+
+        body {
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: #000;
+        }
+
+        /* Custom Cursor */
+        .custom-cursor {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            transition: background-color 0.4s ease, transform 0.08s ease-out;
+            mix-blend-mode: screen;
+        }
+
+        .custom-cursor.green {
+            background-color: rgba(171, 206, 171, 0.3);
+        }
+
+        .custom-cursor.red {
+            background-color: rgba(255, 171, 171, 0.3);
+        }
+
+        .custom-cursor.blue {
+            background-color: rgba(114, 175, 233, 0.3);
+        }
+
+        /* Landing Container */
+        .landing-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Main Image Wrapper - Full Screen */
+        .main-image-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.15s ease-out, opacity 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main-image-wrapper.zooming {
+            filter: blur(0px);
+        }
+
+        #mainImage {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.15s ease-out;
+        }
+
+        /* Hotspots - Overlay Images */
+        .hotspot {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid rgba(171, 206, 171, 0.6);
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(171, 206, 171, 0.15);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+        }
+
+        .hotspot:hover {
+            background: rgba(171, 206, 171, 0.3);
+            border-color: rgba(171, 206, 171, 0.9);
+            transform: translate(-50%, -50%) scale(1.15);
+            animation: none;
+        }
+
+        .hotspot-label {
+            color: rgba(171, 206, 171, 1);
+            font-size: 14px;
+            font-weight: 300;
+            text-align: center;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Blurred Background */
+        .blurred-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            filter: blur(20px);
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .blurred-background.active {
+            opacity: 0.5;
+        }
+
+        /* Zoomed Content */
+        .zoomed-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            max-width: 90%;
+            max-height: 90%;
+            opacity: 0;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+                        opacity 0.6s ease;
+            z-index: 30;
+            pointer-events: none;
+        }
+
+        .zoomed-content.active {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .zoomed-content img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            max-height: 80vh;
+        }
+
+        /* Title Display */
+        .title-display {
+            position: fixed;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: 300;
+            font-size: 28px;
+            letter-spacing: 2px;
+            opacity: 0;
+            transition: opacity 0.5s ease, color 0.4s ease;
+            z-index: 40;
+            pointer-events: none;
+            text-align: center;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .title-display.active {
+            opacity: 1;
+        }
+
+        .title-display.green {
+            color: rgba(171, 206, 171, 1);
+        }
+
+        .title-display.red {
+            color: rgba(255, 171, 171, 1);
+        }
+
+        .title-display.blue {
+            color: rgba(114, 175, 233, 1);
+        }
+
+        /* Instructions */
+        .instructions {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            font-weight: 300;
+            text-align: center;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px 30px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            animation: fadeIn 1s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        .instructions.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- Custom Cursor -->
+    <div class="custom-cursor" id="customCursor"></div>
+
+    <!-- Instructions -->
+    <div class="instructions" id="instructions">
+        Move your cursor to explore • Hover over circles and scroll to zoom in • Press ESC to reset
+    </div>
+
+    <!-- Landing Container -->
+    <div class="landing-container" id="landingContainer">
+        <!-- Main Background Image (Full Screen) -->
+       <div class="main-image-wrapper" id="mainImageWrapper">
+    <img id="mainImage" src="main.png" alt="Landing Page">
+                <defs>
+                    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#16213e;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#0f3460;stop-opacity:1" />
+                    </linearGradient>
+                    <radialGradient id="glow1" cx="50%" cy="50%">
+                        <stop offset="0%" style="stop-color:#ABCEAB;stop-opacity:0.3" />
+                        <stop offset="100%" style="stop-color:#ABCEAB;stop-opacity:0" />
+                    </radialGradient>
+                    <radialGradient id="glow2" cx="50%" cy="50%">
+                        <stop offset="0%" style="stop-color:#72AFE9;stop-opacity:0.3" />
+                        <stop offset="100%" style="stop-color:#72AFE9;stop-opacity:0" />
+                    </radialGradient>
+                    <radialGradient id="glow3" cx="50%" cy="50%">
+                        <stop offset="0%" style="stop-color:#FFABAB;stop-opacity:0.3" />
+                        <stop offset="100%" style="stop-color:#FFABAB;stop-opacity:0" />
+                    </radialGradient>
+                </defs>
+                
+                <!-- Background -->
+                <rect width="1920" height="1080" fill="url(#bg-gradient)"/>
+                
+                <!-- Decorative elements -->
+                <circle cx="480" cy="380" r="200" fill="url(#glow1)"/>
+                <circle cx="1250" cy="590" r="180" fill="url(#glow2)"/>
+                <circle cx="860" cy="750" r="150" fill="url(#glow3)"/>
+                
+                <!-- Abstract shapes -->
+                <path d="M0 700 Q400 650 800 700 T1600 700 L1920 700 L1920 1080 L0 1080 Z" fill="rgba(171, 206, 171, 0.1)"/>
+                <path d="M0 800 Q600 750 1200 800 T2400 800 L1920 1080 L0 1080 Z" fill="rgba(114, 175, 233, 0.1)"/>
+                
+                <!-- Title text -->
+                <text x="960" y="380" font-family="Helvetica Neue, Arial" font-size="84" font-weight="200" fill="rgba(255,255,255,0.95)" text-anchor="middle" letter-spacing="4">Interactive Exploration</text>
+                <text x="960" y="460" font-family="Helvetica Neue, Arial" font-size="36" font-weight="200" fill="rgba(255,255,255,0.7)" text-anchor="middle">Move your cursor to explore horizontally</text>
+                <text x="960" y="540" font-family="Helvetica Neue, Arial" font-size="26" font-weight="300" fill="rgba(171,206,171,0.9)" text-anchor="middle">Hover over the circles below and scroll to discover more</text>
+                
+                <!-- Subtle grid -->
+                <line x1="640" y1="0" x2="640" y2="1080" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                <line x1="1280" y1="0" x2="1280" y2="1080" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                <line x1="0" y1="360" x2="1920" y2="360" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+                <line x1="0" y1="720" x2="1920" y2="720" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+            </svg>
+            
+            <!-- Hotspot 1: Mountain Landscape (Top Left) -->
+            <div class="hotspot" id="hotspot1" data-title="Mountain Landscape" 
+                 style="left: 25%; top: 35%;" 
+                 data-images='["data:image/svg+xml,%3Csvg width='1200' height='900' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='sky1' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2316213e;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%230f3460;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='900' fill='url(%23sky1)'/%3E%3Cpath d='M0 600 L200 350 L400 450 L600 250 L800 400 L1000 300 L1200 500 L1200 900 L0 900 Z' fill='%23ABCEAB' opacity='0.6'/%3E%3Cpath d='M100 650 L300 450 L500 550 L700 350 L900 500 L1100 400 L1200 600 L1200 900 L0 900 Z' fill='%23ABCEAB' opacity='0.4'/%3E%3Ccircle cx='200' cy='150' r='80' fill='rgba(255,255,200,0.3)'/%3E%3Ctext x='600' y='800' font-family='Helvetica Neue' font-size='72' font-weight='300' fill='white' text-anchor='middle' letter-spacing='3'%3EMountain View%3C/text%3E%3C/svg%3E", "data:image/svg+xml,%3Csvg width='1200' height='900' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='sky2' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%230f3460;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%231a1a2e;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='900' fill='url(%23sky2)'/%3E%3Ccircle cx='600' cy='250' r='120' fill='%23FFABAB' opacity='0.7'/%3E%3Cpath d='M300 550 L600 300 L900 550 Z' fill='%23ABCEAB' opacity='0.8'/%3E%3Cpath d='M400 550 L600 380 L800 550 Z' fill='%23ABCEAB' opacity='0.6'/%3E%3Cpolygon points='500,500 550,450 600,480 650,450 700,500' fill='rgba(255,255,255,0.3)'/%3E%3Ctext x='600' y='750' font-family='Helvetica Neue' font-size='64' font-weight='300' fill='white' text-anchor='middle'%3EPeak Detail%3C/text%3E%3C/svg%3E", "data:image/svg+xml,%3Csvg width='1200' height='900' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1200' height='900' fill='%231a1a2e'/%3E%3Cpolygon points='600,150 500,350 700,350' fill='%2372AFE9' opacity='0.9'/%3E%3Cpolygon points='600,200 540,320 660,320' fill='%2372AFE9' opacity='0.7'/%3E%3Cpath d='M400 400 Q600 350 800 400' stroke='rgba(171,206,171,0.5)' stroke-width='3' fill='none'/%3E%3Ccircle cx='450' cy='450' r='15' fill='%23ABCEAB' opacity='0.6'/%3E%3Ccircle cx='600' cy='420' r='20' fill='%23ABCEAB' opacity='0.7'/%3E%3Ccircle cx='750' cy='460' r='18' fill='%23ABCEAB' opacity='0.6'/%3E%3Ctext x='600' y='700' font-family='Helvetica Neue' font-size='72' font-weight='300' fill='white' text-anchor='middle' letter-spacing='4'%3ESummit View%3C/text%3E%3Ctext x='600' y='780' font-family='Helvetica Neue' font-size='32' font-weight='200' fill='rgba(114,175,233,0.8)' text-anchor='middle'%3EElevation: 2,847m%3C/text%3E%3C/svg%3E"]'>
+                <div class="hotspot-label">ZOOM</div>
+            </div>
+            
+            <!-- Hotspot 2: Ocean Waves (Right) -->
+            <div class="hotspot" id="hotspot2" data-title="Ocean Waves" 
+                 style="left: 65%; top: 55%;" 
+                 data-images='["data:image/svg+xml,%3Csvg width='1200' height='900' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='ocean1' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%2316213e;stop-opacity:1' /%3E%3Cstop offset='50%25' style='stop-color:%230f3460;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%2372AFE9;stop-opacity:0.5' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='900' fill='url(%23ocean1)'/%3E%3Cpath d='M0 400 Q300 350 600 400 T1200 400 L1200 900 L0 900 Z' fill='%2372AFE9' opacity='0.6'/%3E%3Cpath d='M0 500 Q400 450 800 500 T1600 500 L1200 900 L0 900 Z' fill='%2372AFE9' opacity='0.5'/%3E%3Cpath d='M0 600 Q200 580 400 600 T800 600 T1200 600 L1200 900 L0 900 Z' fill='%2372AFE9' opacity='0.7'/%3E%3Cellipse cx='600' cy='200' rx='150' ry='80' fill='rgba(255,255,200,0.2)'/%3E%3Ctext x='600' y='300' font-family='Helvetica Neue' font-size='72' font-weight='300' fill='white' text-anchor='middle' letter-spacing='3'%3EOcean View%3C/text%3E%3C/svg%3E", "data:image/svg+xml,%3Csvg width='1200' height='900' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='ocean2' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%230f3460;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%2372AFE9;stop-opacity:0.8' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='900' fill='url(%23ocean2)'/%3E%3Cellipse cx='600' cy='400' rx='200' ry='100' fill='%23FFABAB' opacity='0.5'/%3E%3Cpath d='M0 500 Q300 450 600 500 T1200 500 L1200 900 L0 900 Z' fill='%2372AFE9' opacity='0.8'/%3E%3Cpath d='M0 600 Q400 550 800 600 T1600 600 L1200 900 L0 900 Z' fill='%2372AFE9' opacity='0.6'/%3E%3Ccircle cx='300' cy='550' r='30' fill='rgba(255,255,255,0.3)'/%3E%3Ccircle cx='500' cy='520' r='40' fill='rgba(255,255,255,0.25)'/%3E%3Ccircle cx='700' cy='560' r='35' fill='rgba(255,255,255,0.3)'/%3E%3Ccircle cx='900' cy='530' r='32' fill='rgba(255,255,255,0.28)'/%3E%3Ctext x='600' y='750' font-family='Helvetica Neue' font-size='64' font-weight='300' fill='white' text-anchor='middle'%3EWave Pattern%3C/text%3E%3C/svg%3E", "data:image/svg+xml,%3Csvg width='1200' height='900' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1200' height='900' fill='%231a1a2e'/%3E%3Ccircle cx='600' cy='400' r='180' fill='%2372AFE9' opacity='0.9'/%3E%3Ccircle cx='600' cy='400' r='140' fill='%2372AFE9' opacity='0.7'/%3E%3Ccircle cx='600' cy='400' r='100' fill='%2372AFE9' opacity='0.5'/%3E%3Cpath d='M500 400 Q550 350 600 400 T700 400' stroke='rgba(255,255,255,0.4)' stroke-width='2' fill='none'/%3E%3Cpath d='M500 420 Q550 380 600 420 T700 420' stroke='rgba(255,255,255,0.3)' stroke-width='2' fill='none'/%3E%3Ctext x='600' y='700' font-family='Helvetica Neue' font-size='72' font-weight='300' fill='white' text-anchor='middle' letter-spacing='4'%3EDeep Blue%3C/text%3E%3Ctext x='600' y='780' font-family='Helvetica Neue' font-size='32' font-weight='200' fill='rgba(114,175,233,0.8)' text-anchor='middle'%3EDepth: 3,200m%3C/text%3E%3C/svg%3E"]'>
+                <div class="hotspot-label">ZOOM</div>
+            </div>
+            
+            <!-- Hotspot 3: Forest Path (Bottom Center) -->
+            <div class="hotspot" id="hotspot3" data-title="Forest Path" 
+                 style="left: 45%; top: 70%;" 
+                 data-images='["data:image/svg+xml,%3Csvg width='1200' height='900' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='forest1' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%231a1a2e;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%2316213e;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='1200' height='900' fill='url(%23forest1)'/%3E%3Crect x='200' y='300' width='200' height='400' fill='%23ABCEAB' opacity='0.6' rx='100'/%3E%3Ccircle cx='300' cy='250' r='120' fill='%23ABCEAB' opacity='0.5'/%3E%3Crect x='500' y='250' width='180' height='450' fill='%23ABCEAB' opacity='0.7' rx='90'/%3E%3Ccircle cx='590' cy='200' r='130' fill='%23ABCEAB' opacity='0.6'/%3E%3Crect x='800' y='320' width='190' height='380' fill='%23ABCEAB' opacity='0.65' rx='95'/%3E%3Ccircle cx='895' cy='270' r='125' fill='%23ABCEAB' opacity='0.55'/%3E%3Cpath d='M0 700 L1200 700 L1200 900 L0 900 Z' fill='%23ABCEAB' opacity='0.3'/%3E%3Ctext x='600' y='820' font-family='Helvetica Neue' font-size='72' font-weight='300' fill='white' text-anchor='middle' letter-spacing='3'%3EForest%3C/text%3E%3C/svg%3E", "data:image/svg+xml,%3Csvg width='1200' height='900' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1200' height='900' fill='%230f3460'/%3E%3Cpolygon points='600,150 500,300 700,300' fill='%23FFABAB' opacity='0.7'/%3E%3Crect x='550' y='300' width='100' height='250' fill='%23ABCEAB' opacity='0.8' rx='10'/%3E%3Cpolygon points='600,300 450,480 750,480' fill='%23ABCEAB' opacity='0.9'/%3E%3Cpolygon points='600,350 480,480 720,480' fill='%23ABCEAB' opacity='0.7'/%3E%3Ccircle cx='500' cy='400' r='25' fill='%23FFABAB' opacity='0.6'/%3E%3Ccircle cx='700' cy='420' r='30' fill='%23FFABAB' opacity='0.6'/%3E%3Ccircle cx='600' cy='450' r='22' fill='%23FFABAB' opacity='0.7'/%3E%3Cpath d='M0 700 L1200 700 L1200 900 L0 900 Z' fill='%23ABCEAB' opacity='0.4'/%3E%3Ctext x='600' y='780' font-family='Helvetica Neue' font-size='64' font-weight='300' fill='white' text-anchor='middle'%3ETree Detail%3C/text%3E%3C/svg%3E", "data:image/svg+xml,%3Csvg width='1200' height='900' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1200' height='900' fill='%231a1a2e'/%3E%3Ccircle cx='350' cy='300' r='80' fill='%2372AFE9' opacity='0.8'/%3E%3Ccircle cx='600' cy='250' r='95' fill='%2372AFE9' opacity='0.9'/%3E%3Ccircle cx='850' cy='320' r='85' fill='%2372AFE9' opacity='0.75'/%3E%3Ccircle cx='450' cy='450' r='70' fill='%2372AFE9' opacity='0.7'/%3E%3Ccircle cx='750' cy='470' r='75' fill='%2372AFE9' opacity='0.8'/%3E%3Cpath d='M300 350 L350 280' stroke='%23ABCEAB' stroke-width='3' opacity='0.6'/%3E%3Cpath d='M350 280 L320 250' stroke='%23ABCEAB' stroke-width='2' opacity='0.5'/%3E%3Cpath d='M350 280 L380 245' stroke='%23ABCEAB' stroke-width='2' opacity='0.5'/%3E%3Cpath d='M600 300 L580 220' stroke='%23ABCEAB' stroke-width='3' opacity='0.6'/%3E%3Cpath d='M600 300 L620 215' stroke='%23ABCEAB' stroke-width='3' opacity='0.6'/%3E%3Ctext x='600' y='700' font-family='Helvetica Neue' font-size='72' font-weight='300' fill='white' text-anchor='middle' letter-spacing='4'%3ELeaf Pattern%3C/text%3E%3Ctext x='600' y='780' font-family='Helvetica Neue' font-size='32' font-weight='200' fill='rgba(114,175,233,0.8)' text-anchor='middle'%3EBiodiversity Index: 8.4%3C/text%3E%3C/svg%3E"]'>
+                <div class="hotspot-label">ZOOM</div>
+            </div>
+        </div>
+
+        <!-- Blurred Background -->
+        <div class="blurred-background" id="blurredBackground"></div>
+
+        <!-- Zoomed Content Container -->
+        <div class="zoomed-content" id="zoomedContent">
+            <img src="" alt="Zoomed Image" id="zoomedImage">
+        </div>
+
+        <!-- Title Display -->
+        <div class="title-display" id="titleDisplay"></div>
+    </div>
+
+    <script>
+        // ============================================
+        // STATE MANAGEMENT
+        // ============================================
+        const state = {
+            zoomLevel: 0,
+            currentHotspot: null,
+            currentImageIndex: 0,
+            isZoomed: false,
+            cursorColor: 'green',
+            images: [],
+            mainImageScale: 1,
+            mainImageX: 0,
+            mainImageY: 0
+        };
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const cursor = document.getElementById('customCursor');
+        const mainImageWrapper = document.getElementById('mainImageWrapper');
+        const mainImage = document.getElementById('mainImage');
+        const blurredBackground = document.getElementById('blurredBackground');
+        const zoomedContent = document.getElementById('zoomedContent');
+        const zoomedImage = document.getElementById('zoomedImage');
+        const titleDisplay = document.getElementById('titleDisplay');
+        const landingContainer = document.getElementById('landingContainer');
+        const hotspots = document.querySelectorAll('.hotspot');
+        const instructions = document.getElementById('instructions');
+
+        // ============================================
+        // CURSOR TRACKING
+        // ============================================
+        let mouseX = 0;
+        let mouseY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+            
+            // Update horizontal image movement only when not zoomed
+            if (!state.isZoomed) {
+                updateMainImagePosition(e.clientX);
+            }
+        });
+
+        // ============================================
+        // HORIZONTAL IMAGE MOVEMENT (Cursor Following)
+        // ============================================
+        function updateMainImagePosition(clientX) {
+            const centerX = window.innerWidth / 2;
+            const offsetX = (clientX - centerX) / window.innerWidth;
+            
+            // Apply resistance - image moves opposite to cursor
+            const maxMovement = 200; // Maximum pixels to move
+            const resistance = 0.3; // Lower = more resistance
+            const translateX = -offsetX * maxMovement * resistance;
+            
+            mainImage.style.transform = `translateX(${translateX}px)`;
+        }
+
+        // ============================================
+        // CURSOR COLOR MANAGEMENT
+        // ============================================
+        function updateCursorColor(zoomLevel) {
+            cursor.classList.remove('green', 'red', 'blue');
+            
+            if (zoomLevel === 0) {
+                state.cursorColor = 'green';
+                cursor.classList.add('green');
+            } else if (zoomLevel === 1) {
+                state.cursorColor = 'red';
+                cursor.classList.add('red');
+            } else if (zoomLevel >= 2) {
+                state.cursorColor = 'blue';
+                cursor.classList.add('blue');
+            }
+        }
+
+        // ============================================
+        // TITLE DISPLAY
+        // ============================================
+        function showTitle(text, colorClass) {
+            titleDisplay.textContent = text;
+            titleDisplay.classList.remove('green', 'red', 'blue');
+            titleDisplay.classList.add(colorClass, 'active');
+        }
+
+        function hideTitle() {
+            titleDisplay.classList.remove('active');
+        }
+
+        // ============================================
+        // HOTSPOT DETECTION
+        // ============================================
+        function checkHotspotProximity(clientX, clientY) {
+            if (state.isZoomed) return null;
+            
+            let closestHotspot = null;
+            let minDistance = Infinity;
+            const activationRadius = 100; // pixels
+            
+            hotspots.forEach(hotspot => {
+                const rect = hotspot.getBoundingClientRect();
+                const hotspotX = rect.left + rect.width / 2;
+                const hotspotY = rect.top + rect.height / 2;
+                
+                const distance = Math.sqrt(
+                    Math.pow(clientX - hotspotX, 2) + 
+                    Math.pow(clientY - hotspotY, 2)
+                );
+                
+                if (distance < activationRadius && distance < minDistance) {
+                    minDistance = distance;
+                    closestHotspot = hotspot;
+                }
+            });
+            
+            return closestHotspot;
+        }
+
+        // ============================================
+        // ZOOM NAVIGATION
+        // ============================================
+        function zoomToHotspot(hotspot) {
+            state.isZoomed = true;
+            state.currentHotspot = hotspot;
+            state.currentImageIndex = 0;
+            state.images = JSON.parse(hotspot.dataset.images);
+            const title = hotspot.dataset.title;
+            
+            // Remember the cursor color at the start of zoom
+            const initialColor = state.cursorColor;
+            
+            // Hide instructions
+            instructions.classList.add('hidden');
+            
+            // Set blurred background using SVG data
+            const svgData = new XMLSerializer().serializeToString(mainImage);
+            const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+            const svgUrl = URL.createObjectURL(svgBlob);
+            blurredBackground.style.backgroundImage = `url(${svgUrl})`;
+            blurredBackground.classList.add('active');
+            
+            // Hide main image wrapper
+            mainImageWrapper.style.opacity = '0';
+            mainImageWrapper.style.pointerEvents = 'none';
+            
+            // Show first image in sequence
+            zoomedImage.src = state.images[0];
+            zoomedContent.classList.add('active');
+            
+            // Show title with initial color
+            showTitle(title, initialColor);
+            
+            // Update cursor for zoom level 1
+            state.zoomLevel = 1;
+            updateCursorColor(1);
+        }
+
+        function zoomOut() {
+            state.isZoomed = false;
+            state.zoomLevel = 0;
+            state.currentHotspot = null;
+            state.currentImageIndex = 0;
+            
+            // Hide zoomed content
+            zoomedContent.classList.remove('active');
+            blurredBackground.classList.remove('active');
+            
+            // Show main image
+            mainImageWrapper.style.opacity = '1';
+            mainImageWrapper.style.pointerEvents = 'auto';
+            
+            // Hide title
+            hideTitle();
+            
+            // Show instructions again
+            instructions.classList.remove('hidden');
+            
+            // Reset cursor to green
+            updateCursorColor(0);
+        }
+
+        function nextImage() {
+            if (!state.isZoomed || state.currentImageIndex >= state.images.length - 1) {
+                return;
+            }
+            
+            state.currentImageIndex++;
+            state.zoomLevel++;
+            
+            // Fade transition
+            zoomedContent.style.opacity = '0';
+            
+            setTimeout(() => {
+                zoomedImage.src = state.images[state.currentImageIndex];
+                zoomedContent.style.opacity = '1';
+                
+                // Update cursor color for deeper zoom levels
+                updateCursorColor(state.zoomLevel);
+            }, 300);
+        }
+
+        function previousImage() {
+            if (!state.isZoomed || state.currentImageIndex === 0) {
+                zoomOut();
+                return;
+            }
+            
+            state.currentImageIndex--;
+            state.zoomLevel--;
+            
+            // Fade transition
+            zoomedContent.style.opacity = '0';
+            
+            setTimeout(() => {
+                zoomedImage.src = state.images[state.currentImageIndex];
+                zoomedContent.style.opacity = '1';
+                
+                // Update cursor color
+                updateCursorColor(state.zoomLevel);
+            }, 300);
+        }
+
+        // ============================================
+        // SCROLL/WHEEL ZOOM DETECTION
+        // ============================================
+        let scrollAccumulator = 0;
+        const scrollThreshold = 150; // Amount of scroll needed to trigger zoom
+
+        document.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            if (!state.isZoomed) {
+                // Check if over a hotspot
+                const hotspot = checkHotspotProximity(mouseX, mouseY);
+                
+                if (hotspot) {
+                    scrollAccumulator += Math.abs(e.deltaY);
+                    
+                    if (scrollAccumulator >= scrollThreshold) {
+                        scrollAccumulator = 0;
+                        zoomToHotspot(hotspot);
+                    }
+                } else {
+                    scrollAccumulator = 0;
+                }
+            } else {
+                // Already zoomed - navigate between images
+                if (e.deltaY > 0) {
+                    // Scroll down - zoom in more / next image
+                    scrollAccumulator += e.deltaY;
+                    
+                    if (scrollAccumulator >= scrollThreshold) {
+                        scrollAccumulator = 0;
+                        nextImage();
+                    }
+                } else {
+                    // Scroll up - zoom out / previous image
+                    scrollAccumulator += Math.abs(e.deltaY);
+                    
+                    if (scrollAccumulator >= scrollThreshold) {
+                        scrollAccumulator = 0;
+                        previousImage();
+                    }
+                }
+            }
+        }, { passive: false });
+
+        // ============================================
+        // KEYBOARD NAVIGATION
+        // ============================================
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && state.isZoomed) {
+                zoomOut();
+            }
+        });
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        function init() {
+            // Set initial cursor color
+            updateCursorColor(0);
+            
+            // Add visual feedback to hotspots on hover
+            hotspots.forEach(hotspot => {
+                hotspot.addEventListener('mouseenter', () => {
+                    hotspot.style.transform = 'translate(-50%, -50%) scale(1.2)';
+                });
+                
+                hotspot.addEventListener('mouseleave', () => {
+                    hotspot.style.transform = 'translate(-50%, -50%) scale(1)';
+                });
+            });
+            
+            // Auto-hide instructions after 5 seconds
+            setTimeout(() => {
+                if (!state.isZoomed) {
+                    instructions.classList.add('hidden');
+                }
+            }, 5000);
+            
+            console.log('Interactive zoom experience initialized');
+            console.log('Hover over colored circles and scroll to zoom in');
+        }
+
+        // Start the experience
+        init();
+    </script>
+</body>
+</html>
