@@ -368,12 +368,12 @@
                
             ],
             building: [
-                'B1.jpg', 'B2.jpg', 'B3.png', 'CC1.jpg',
-                'CC2.jpg', 'CC3.png', 'D1.png', 'D2.png'
+                'B1.JPG', 'B2.jpg', 'B3.png', 'CC1.JPG',
+                'CC2.JPG', 'CC3.png', 'D1.png', 'D2.png'
             ],
             unit: [
-                'U1.jpg', 'U2.jpg', 'U3.jpg', 'U4.jpg',
-                'U5.jpg', 'U6.jpg', 'U7.jpg', 'U8.jpg'
+                'U1.jpg', 'U2.JPG', 'U3.jpg', 'U4.JPG',
+                'U5.JPG', 'U6.jpg', 'U7.jpg', 'U8.JPG'
             ]
         };
 
@@ -391,18 +391,18 @@
             'green-10': ['C11.jpg'],
             'green-11': ['C15.jpg', 'C16.jpg'],
             
-            'red-1': ['B1.jpg', 'B2.jpg'],
-            'red-2': ['B3.png', 'CC1.jpg'],
-            'red-3': ['CC2.jpg'],
+            'red-1': ['B1.JPG', 'B2.jpg'],
+            'red-2': ['B3.png', 'CC1.JPG'],
+            'red-3': ['CC2.JPG'],
             'red-4': ['CC3.png'],
             'red-5': ['D1.png', 'D2.png'],
-            'red-6': ['e1.jpg', 'e2.jpg', 'e3.jpg'],
-            'red-7': ['B1.jpg', 'B2.jpg'],
+            'red-6': ['e1.JPG', 'e2.JPG', 'e3.JPG'],
+            'red-7': ['B1.JPG', 'B2.jpg'],
             
-            'blue-1': ['U1.jpg', 'U2.jpg'],
-            'blue-2': ['U3.jpg', 'U4.jpg'],
-            'blue-3': ['U5.jpg', 'U6.jpg'],
-            'blue-4': ['U7.jpg', 'U8.jpg']
+            'blue-1': ['U1.jpg', 'U2.JPG'],
+            'blue-2': ['U3.jpg', 'U4.JPG'],
+            'blue-3': ['U5.JPG', 'U6.jpg'],
+            'blue-4': ['U7.jpg', 'U8.JPG']
         };
 
         // Elements
@@ -573,13 +573,10 @@
 
             if (expandedView.classList.contains('active')) return;
 
-            // ========== ZOOM LOCK CHECK ==========
             // Check if zoom is allowed (not locked to horizontal movement)
             if (!canZoom()) {
-                console.log('Zoom blocked: horizontal movement active');
                 return; // Block zoom if horizontal movement is active
             }
-            // =====================================
 
             lockToZoom(); // Lock to zoom action
             currentAction = 'zooming';
@@ -629,7 +626,6 @@
                 
                 if (hoveredCircle && !lockedCircle && currentZoom > 100) {
                     lockedCircle = hoveredCircle;
-                    console.log(`Locked to circle: ${lockedCircle.id}`);
                 }
                 
                 if (delta > 0 && currentZoom > oldZoom) {
