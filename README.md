@@ -96,7 +96,7 @@ There is no single correct way to navigate the site; this ambiguity is intention
 
 This project was developed as part of ARCH 3101/3102 Design V under the guidance of Prof. Stephanie Lee, with collaboration from Zachary Stephens and Molly Dart.
 
-The website was developed with guidance and teaching of Prof. Zachary White. (GitHub: [zcrywht](https://github.com/zcrywht))
+The website was developed with guidance and teaching of Prof. Zachary White. (GitHub: https://github.com/zchrywht)
 
 ---
 
